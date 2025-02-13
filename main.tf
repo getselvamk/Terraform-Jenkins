@@ -1,14 +1,94 @@
 provider "aws" {
-  region = "us-east-1"
+  region = "us-east-1" # Change to your preferred region
 }
 
-resource "aws_instance" "foo" {
-  ami           = "ami-05fa00d4c63e32376" # Ensure this AMI is available in us-east-1
-  instance_type = "t2.micro"
-  subnet_id     = "subnet-0e9023d44a1f96322" # Subnet in the specified VPC
-  vpc_security_group_ids = ["sg-092816b294b0010e2"] # Use the existing security group
+# Create a new VPC
+resource "aws_vpc" "terraform_vpc" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
 
   tags = {
-    Name = "TF-Instance"
+    Name = "terraform-ec2-test-vpc"
   }
+}
+
+# Create a public subnet
+resource "aws_subnet" "public_subnet" {
+  vpc_id                  = aws_vpc.terraform_vpc.id
+  cidr_block              = "10.0.1.0/24"
+  map_public_ip_on_launch = true # Ensure instances in this subnet get a public IP
+
+  tags = {
+    Name = "terraform-ec2-test-public-subnet"
+  }
+}
+
+# Create an Internet Gateway
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.terraform_vpc.id
+
+  tags = {
+    Name = "terraform-ec2-test-igw"
+  }
+}
+
+# Create a route table for the public subnet
+resource "aws_route_table" "public_route_table" {
+  vpc_id = aws_vpc.terraform_vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "terraform-ec2-test-public-route-table"
+  }
+}
+
+# Associate the public subnet with the public route table
+resource "aws_route_table_association" "public_subnet_association" {
+  subnet_id      = aws_subnet.public_subnet.id
+  route_table_id = aws_route_table.public_route_table.id
+}
+
+# Create a security group allowing SSH access
+resource "aws_security_group" "ssh_sg" {
+  vpc_id = aws_vpc.terraform_vpc.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # Allow SSH from anywhere
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"] # Allow all outbound traffic
+  }
+
+  tags = {
+    Name = "terraform-ec2-test-ssh-sg"
+  }
+}
+
+# Create an EC2 instance in the public subnet
+resource "aws_instance" "ec2_instance" {
+  ami                    = "ami-0c02fb55956c7d316" # Amazon Linux 2 AMI in us-east-1
+  instance_type          = "t2.micro"
+  subnet_id              = aws_subnet.public_subnet.id
+  vpc_security_group_ids = [aws_security_group.ssh_sg.id]
+
+  tags = {
+    Name = "terraform-ec2-test-instance"
+  }
+}
+
+# Output the public IP of the EC2 instance
+output "ec2_public_ip" {
+  value = aws_instance.ec2_instance.public_ip
 }
