@@ -17,24 +17,15 @@ variable "internet_gateway_id" {
   default = "igw-02762816e70e63c54"
 }
 
-# Create a route table for the public subnet
-resource "aws_route_table" "public_route_table" {
-  vpc_id = var.vpc_id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = var.internet_gateway_id
-  }
-
-  tags = {
-    Name = "terraform-ec2-test-public-route-table"
-  }
+# Use the specified route table ID directly
+variable "route_table_id" {
+  default = "rtb-02c2ce74d90724200"
 }
 
-# Associate the public subnet with the public route table
+# Associate the public subnet with the specified route table
 resource "aws_route_table_association" "public_subnet_association" {
   subnet_id      = var.subnet_id
-  route_table_id = aws_route_table.public_route_table.id
+  route_table_id = var.route_table_id
 }
 
 # Create a security group allowing SSH access within the specified VPC
@@ -62,7 +53,7 @@ resource "aws_security_group" "ssh_sg" {
 
 # Create an EC2 instance in the public subnet
 resource "aws_instance" "ec2_instance" {
-  ami                    = "ami-0c02fb55956c7d316" # Amazon Linux 2 AMI in eu-west-1
+  ami                    = "ami-087a0156cb826e921" # Amazon Linux 2 AMI in eu-west-1
   instance_type          = "t2.micro"
   subnet_id              = var.subnet_id
   vpc_security_group_ids = [aws_security_group.ssh_sg.id]
