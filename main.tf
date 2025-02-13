@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "us-east-1" # Change to your preferred region
+  region = "eu-west-1" # Change to your preferred region
 }
 
 # Use the specified VPC
