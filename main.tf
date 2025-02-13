@@ -1,21 +1,15 @@
 provider "aws" {
-  region = "eu-west-1" # Change to your preferred region
+  region = "us-east-1" # Change to your preferred region
 }
 
-# Create a new VPC
-resource "aws_vpc" "terraform_vpc" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-
-  tags = {
-    Name = "terraform-ec2-test-vpc"
-  }
+# Use the specified VPC
+data "aws_vpc" "existing_vpc" {
+  id = "vpc-0567dd68a6f03a784"
 }
 
-# Create a public subnet
+# Create a public subnet within the specified VPC
 resource "aws_subnet" "public_subnet" {
-  vpc_id                  = aws_vpc.terraform_vpc.id
+  vpc_id                  = data.aws_vpc.existing_vpc.id
   cidr_block              = "10.0.1.0/24"
   map_public_ip_on_launch = true # Ensure instances in this subnet get a public IP
 
@@ -24,9 +18,9 @@ resource "aws_subnet" "public_subnet" {
   }
 }
 
-# Create an Internet Gateway
+# Create an Internet Gateway for the specified VPC
 resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.terraform_vpc.id
+  vpc_id = data.aws_vpc.existing_vpc.id
 
   tags = {
     Name = "terraform-ec2-test-igw"
@@ -35,7 +29,7 @@ resource "aws_internet_gateway" "igw" {
 
 # Create a route table for the public subnet
 resource "aws_route_table" "public_route_table" {
-  vpc_id = aws_vpc.terraform_vpc.id
+  vpc_id = data.aws_vpc.existing_vpc.id
 
   route {
     cidr_block = "0.0.0.0/0"
@@ -53,9 +47,9 @@ resource "aws_route_table_association" "public_subnet_association" {
   route_table_id = aws_route_table.public_route_table.id
 }
 
-# Create a security group allowing SSH access
+# Create a security group allowing SSH access within the specified VPC
 resource "aws_security_group" "ssh_sg" {
-  vpc_id = aws_vpc.terraform_vpc.id
+  vpc_id = data.aws_vpc.existing_vpc.id
 
   ingress {
     from_port   = 22
